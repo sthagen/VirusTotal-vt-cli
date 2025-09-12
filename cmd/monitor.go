@@ -225,8 +225,8 @@ account that was previously set.`
 func NewMonitorItemsDeleteDetailsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deletedetails [monitor_id]...",
-		Short: "Download files from your monitor account",
-		Long:  monitorItemsSetDetailsCmdHelp,
+		Short: "Delete details metadata from files",
+		Long:  monitorItemsDeleteDetailsCmdHelp,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return errors.New("No item provided")

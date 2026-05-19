@@ -169,22 +169,53 @@ func Test_NewFileDirReader_Error(t *testing.T) {
 	t.Parallel()
 
 	rootDir := t.TempDir()
-	noPerm := os.FileMode(0000)
-	if err := os.WriteFile(filepath.Join(rootDir, "a.txt"), []byte("hello world!"), noPerm); err != nil {
+	rwxPerm := os.FileMode(0755)
+	if err := os.WriteFile(filepath.Join(rootDir, "a.txt"), []byte("hello world!"), rwxPerm); err != nil {
+		t.Fatalf("unexpected error while WriteFile %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(rootDir, "z.txt"), []byte("hello world!"), rwxPerm); err != nil {
 		t.Fatalf("unexpected error while WriteFile %v", err)
 	}
 	path := filepath.Join(rootDir, "sub")
+	noPerm := os.FileMode(0000)
 	if err := os.Mkdir(path, noPerm); err != nil {
 		t.Fatalf("unexpected error while Mkdir %v", err)
 	}
-	_, err := NewFileDirReader(rootDir, false, 10)
+
+	path = filepath.Join(rootDir, "sub_2")
+	if err := os.Mkdir(path, rwxPerm); err != nil {
+		t.Fatalf("unexpected error while Mkdir %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(path, "www.txt"), []byte("hello world!"), rwxPerm); err != nil {
+		t.Fatalf("unexpected error while WriteFile %v", err)
+	}
+
+	sr, err := NewFileDirReader(rootDir, false, 10)
 	if err != nil {
 		t.Errorf("unexpected error while NewFileDirReader err:%v", err)
 	}
-	_, err = NewFileDirReader(rootDir, true, 10)
+
+	sr, err = NewFileDirReader(rootDir, true, 10)
 	if !strings.Contains(err.Error(), "permission denied") {
 		t.Errorf("unexpected error permissions denied message got:%v", err.Error())
 	}
+
+	if diff := cmp.Diff(
+		&StringArrayReader{
+			strings: []string{
+				filepath.Join(rootDir, "a.txt"),
+				// note we are ignoring, and not getting back sub permission denied directory
+				filepath.Join(rootDir, "sub_2/www.txt"),
+				filepath.Join(rootDir, "z.txt"),
+			},
+		},
+		sr,
+		cmp.AllowUnexported(StringArrayReader{}),
+	); diff != "" {
+		t.Errorf("unexpected StringArrayReader mismatch (-want +got):\n%s", diff)
+	}
+
 }
 
 func Test_pathDepth(t *testing.T) {

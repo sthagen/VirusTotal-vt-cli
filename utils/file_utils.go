@@ -14,6 +14,8 @@
 package utils
 
 import (
+	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -30,14 +32,20 @@ func NewFileDirReader(fileDir string, recursive bool, maxDepth int) (*StringArra
 	var filePaths []string
 	rootDepth := pathDepth(fileDir)
 
+	var errs []error
+
 	// filePaths is safely appended within WalkDir because WalkDir executes the callback sequentially.
 	// No race conditions occur in this implementation, even with slice reallocation.
 	err := filepath.WalkDir(fileDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return err
+			errs = append(errs, fmt.Errorf("%s: %w", path, err))
+			if d != nil && d.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
 		}
 
-		if !d.IsDir() {
+		if d != nil && !d.IsDir() {
 			filePaths = append(filePaths, path)
 			return nil
 		}
@@ -54,9 +62,10 @@ func NewFileDirReader(fileDir string, recursive bool, maxDepth int) (*StringArra
 	})
 
 	if err != nil {
-		return nil, err
+		errs = append(errs, err)
 	}
-	return &StringArrayReader{strings: filePaths}, nil
+
+	return &StringArrayReader{strings: filePaths}, errors.Join(errs...)
 }
 
 // pathDepth returns the depth of a given path by counting its components.

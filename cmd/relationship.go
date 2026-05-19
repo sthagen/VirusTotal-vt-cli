@@ -36,7 +36,12 @@ func init() {
 		// We used to store the cache file in user's home directory. Let's
 		// move it to the cache directory.
 		if homeDir, err := os.UserHomeDir(); err == nil {
-			os.Rename(path.Join(homeDir, ".vt.relationships.cache"), cacheFile)
+			oldCacheFile := path.Join(homeDir, ".vt.relationships.cache")
+			if _, err := os.Stat(oldCacheFile); err == nil {
+				if err := os.MkdirAll(cacheDir, 0755); err == nil {
+					os.Rename(oldCacheFile, cacheFile)
+				}
+			}
 		}
 		f, err := os.Open(cacheFile)
 		if err == nil {

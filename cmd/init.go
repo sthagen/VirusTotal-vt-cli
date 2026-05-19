@@ -79,6 +79,11 @@ func NewInitCmd() *cobra.Command {
 				os.Exit(1)
 			}
 
+			if err := os.MkdirAll(cacheDir, 0755); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+
 			relCacheFile, err := os.Create(path.Join(cacheDir, ".vt.relationships.cache"))
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
